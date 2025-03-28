@@ -13,7 +13,6 @@
 /vendor/
 .idea/
 .vscode/
-*.sum
 
 # 本地配置檔案
 .env
