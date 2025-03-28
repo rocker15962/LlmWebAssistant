@@ -17,7 +17,7 @@
       "storage"
     ],
     "host_permissions": [
-      "https://llmwebassistant.onrender.com/*",
+      "http://localhost:8080/*",
       "<all_urls>"
     ],
     "background": {

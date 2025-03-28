@@ -4,7 +4,7 @@
  */
 
 // 後端 API 基礎 URL
-const API_BASE_URL = 'https://llmwebassistant.onrender.com/api';
+const API_BASE_URL = 'http://localhost:8080/api';
 
 // API 端點
 const ENDPOINTS = {

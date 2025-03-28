@@ -176,7 +176,7 @@ async function askQuestion(question, useWebSearch, isSimple) {
     const screenshot = await captureScreenshot();
     const pageContent = await getPageContent();
     
-    const response = await fetch('https://llmwebassistant.onrender.com/api/ask', {
+    const response = await fetch('http://localhost:8080/api/ask', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
