@@ -34,7 +34,7 @@ func main() {
 	// 添加自定義錯誤處理中間件
 	r.Use(func(c *gin.Context) {
 		c.Next()
-		
+
 		// 檢查是否有錯誤
 		if len(c.Errors) > 0 {
 			for _, e := range c.Errors {
@@ -106,4 +106,4 @@ func setupRoutes(router *gin.Engine) {
 	if !config.IsProduction() {
 		router.Static("/static", "./static")
 	}
-} 
+}
