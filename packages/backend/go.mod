@@ -1,4 +1,4 @@
-module llm-web-assistant/backend
+module github.com/rocker15962/llm-web-assistant/packages/backend
 
 go 1.19
 
@@ -33,4 +33,4 @@ require (
 	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-) 
+)

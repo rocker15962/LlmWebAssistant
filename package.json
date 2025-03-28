@@ -1,0 +1,18 @@
+{
+  "name": "llm-web-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:extension": "cd packages/extension && npm run dev",
+    "dev:backend": "cd packages/backend && go run main.go",
+    "build:extension": "cd packages/extension && npm run build",
+    "build:backend": "cd packages/backend && go build -o bin/server",
+    "dev": "concurrently \"npm run dev:extension\" \"npm run dev:backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  }
+} 

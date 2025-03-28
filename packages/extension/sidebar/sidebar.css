@@ -1,0 +1,39 @@
+/* Token 信息樣式 */
+.token-info {
+  font-size: 12px;
+  color: #666;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+  text-align: right;
+}
+
+/* 深色模式下的 token 信息 */
+@media (prefers-color-scheme: dark) {
+  .token-info {
+    color: #aaa;
+    border-top-color: #333;
+  }
+}
+
+/* 優化信息樣式 */
+.optimization-info {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #f0f8ff;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #0066cc;
+}
+
+.optimization-info p {
+  margin: 4px 0;
+}
+
+/* 深色模式下的優化信息 */
+@media (prefers-color-scheme: dark) {
+  .optimization-info {
+    background-color: #1a3a5a;
+    color: #66b2ff;
+  }
+} 

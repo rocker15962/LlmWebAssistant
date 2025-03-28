@@ -6,14 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"llm-web-assistant/backend/models"
-	"llm-web-assistant/backend/utils"
+	"github.com/rocker15962/llm-web-assistant/packages/backend/models"
+	"github.com/rocker15962/llm-web-assistant/packages/backend/utils"
 )
 
 // HandleHealth 處理健康檢查請求
 func HandleHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"status": "ok",
+		"status":  "ok",
 		"message": "服務正常運行",
 	})
 }
@@ -28,17 +28,17 @@ func HandleAsk(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// 使用 GenerateResponse 函數
 	response, err := utils.GenerateResponse(req)
-	
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("生成回答時出錯: %v", err),
 		})
 		return
 	}
-	
+
 	// 返回回應
 	c.JSON(http.StatusOK, response)
-} 
+}

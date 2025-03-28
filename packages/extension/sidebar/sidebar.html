@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM 網頁助手</title>
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- 自定義 CSS -->
+  <link rel="stylesheet" href="../popup/popup.css">
+  <style>
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    
+    .container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+    }
+    
+    .response-container {
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+    
+    /* Markdown 樣式 */
+    .response-content h1 {
+      font-size: 1.8em;
+      margin-top: 0.8em;
+      margin-bottom: 0.5em;
+      font-weight: 600;
+      color: #212121;
+    }
+    
+    .response-content h2 {
+      font-size: 1.5em;
+      margin-top: 0.7em;
+      margin-bottom: 0.5em;
+      font-weight: 600;
+      color: #212121;
+    }
+    
+    .response-content h3 {
+      font-size: 1.3em;
+      margin-top: 0.6em;
+      margin-bottom: 0.4em;
+      font-weight: 600;
+      color: #212121;
+    }
+    
+    .response-content h4, .response-content h5, .response-content h6 {
+      font-size: 1.1em;
+      margin-top: 0.5em;
+      margin-bottom: 0.3em;
+      font-weight: 600;
+      color: #212121;
+    }
+    
+    .response-content p {
+      margin-bottom: 0.8em;
+      line-height: 1.5;
+    }
+    
+    .response-content code {
+      font-family: 'Courier New', monospace;
+      background-color: #f5f5f5;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-size: 0.9em;
+      color: #e91e63;
+    }
+    
+    .response-content pre {
+      background-color: #f5f5f5;
+      padding: 1em;
+      border-radius: 5px;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+    
+    .response-content pre code {
+      background-color: transparent;
+      padding: 0;
+      color: #333;
+      font-size: 0.9em;
+      line-height: 1.4;
+    }
+    
+    /* 深色模式 */
+    @media (prefers-color-scheme: dark) {
+      .response-content h1, .response-content h2, .response-content h3,
+      .response-content h4, .response-content h5, .response-content h6 {
+        color: #e0e0e0;
+      }
+      
+      .response-content code {
+        background-color: #2d2d2d;
+        color: #ff4081;
+      }
+      
+      .response-content pre {
+        background-color: #2d2d2d;
+      }
+      
+      .response-content pre code {
+        color: #e0e0e0;
+      }
+    }
+    
+    /* 下拉選單樣式 */
+    .mode-selection {
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+    }
+    
+    .select-label {
+      font-size: 14px;
+      font-weight: 500;
+      margin-right: 10px;
+      color: #424242;
+    }
+    
+    .select-container {
+      position: relative;
+      flex: 1;
+    }
+    
+    .mode-select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      font-size: 14px;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+    
+    .select-arrow {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: #757575;
+    }
+    
+    /* 深色模式下拉選單 */
+    @media (prefers-color-scheme: dark) {
+      .select-label {
+        color: #e0e0e0;
+      }
+      
+      .mode-select {
+        background-color: #333;
+        border-color: #555;
+        color: #e0e0e0;
+      }
+      
+      .select-arrow {
+        color: #aaa;
+      }
+    }
+    
+    /* 按鈕組樣式 */
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    
+    .submit-button {
+      flex: 1;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.3s, opacity 0.3s;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .simple-button {
+      background-color: #e0e0e0;
+      color: #424242;
+    }
+    
+    .detail-button {
+      background-color: #2196f3;
+      color: white;
+    }
+    
+    .submit-button:hover {
+      opacity: 0.9;
+    }
+    
+    .submit-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    /* 深色模式按鈕 */
+    @media (prefers-color-scheme: dark) {
+      .simple-button {
+        background-color: #424242;
+        color: #e0e0e0;
+      }
+      
+      .detail-button {
+        background-color: #1976d2;
+        color: white;
+      }
+    }
+    
+    /* Token 信息樣式 */
+    .token-info {
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #eee;
+      text-align: right;
+      display: block; /* 確保元素可見 */
+    }
+    
+    /* 深色模式下的 token 信息 */
+    @media (prefers-color-scheme: dark) {
+      .token-info {
+        color: #aaa;
+        border-top-color: #333;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">LLM 網頁助手</h1>
+      <div id="toggleButton" class="close-button">
+        <span class="material-icons">chevron_right</span>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="input-container">
+        <div class="text-field">
+          <textarea id="question" placeholder="請輸入您的問題..." rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="mode-selection">
+        <label for="answerMode" class="select-label">回答模式：</label>
+        <div class="select-container">
+          <select id="answerMode" class="mode-select">
+            <option value="screenshot" selected>看圖回答 - 當前畫面截圖做回答</option>
+            <option value="content">資訊整理 - 搜集此網頁資訊做回答</option>
+            <option value="search">外部搜尋 - 搜尋網路資訊做回答</option>
+          </select>
+          <span class="select-arrow material-icons">arrow_drop_down</span>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button id="simpleBtn" class="submit-button simple-button">
+          <span class="button-text">簡單回答</span>
+        </button>
+        <button id="detailBtn" class="submit-button detail-button">
+          <span class="button-text">詳細回答</span>
+        </button>
+      </div>
+
+      <div id="loadingContainer" class="loading-container">
+        <div class="spinner"></div>
+        <p class="loading-text">正在思考中...</p>
+      </div>
+
+      <div id="responseContainer" class="response-container">
+        <h2 class="response-title">回答：</h2>
+        <div id="responseContent" class="response-content"></div>
+        <div id="tokenInfo" class="token-info" style="display:block;"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 導入 JavaScript -->
+  <script type="module" src="../utils/api.js"></script>
+  <script type="module" src="sidebar.js"></script>
+</body>
+</html> 

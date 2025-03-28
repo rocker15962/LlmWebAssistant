@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM 網頁助手</title>
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- Material UI CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/@mui/material@5.14.0/dist/mui-material.min.css" rel="stylesheet">
+  <!-- 自定義 CSS -->
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">LLM 網頁助手</h1>
+      <div id="closeButton" class="close-button">
+        <span class="material-icons">close</span>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="input-container">
+        <div class="text-field">
+          <textarea id="question" placeholder="請輸入您的問題..." rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="mode-selection">
+        <h2 class="section-title">選擇回答模式：</h2>
+        <div class="radio-group">
+          <label class="radio-item">
+            <input type="radio" name="answerMode" value="screenshot" checked>
+            <span class="radio-icon"></span>
+            <div class="radio-content">
+              <span class="radio-label">看圖回答</span>
+              <span class="radio-description">當前畫面截圖做回答</span>
+            </div>
+          </label>
+
+          <label class="radio-item">
+            <input type="radio" name="answerMode" value="content">
+            <span class="radio-icon"></span>
+            <div class="radio-content">
+              <span class="radio-label">資訊整理</span>
+              <span class="radio-description">搜集此網頁資訊做回答</span>
+            </div>
+          </label>
+
+          <label class="radio-item">
+            <input type="radio" name="answerMode" value="search">
+            <span class="radio-icon"></span>
+            <div class="radio-content">
+              <span class="radio-label">外部搜尋</span>
+              <span class="radio-description">搜尋網路資訊做回答</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <button id="submitBtn" class="submit-button">
+        <span class="button-text">提交問題</span>
+      </button>
+
+      <div id="loadingContainer" class="loading-container">
+        <div class="spinner"></div>
+        <p class="loading-text">正在思考中...</p>
+      </div>
+
+      <div id="responseContainer" class="response-container">
+        <h2 class="response-title">回答：</h2>
+        <div id="responseContent" class="response-content"></div>
+        <div id="tokenInfo" class="token-info"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 導入 JavaScript -->
+  <script type="module" src="popup.js"></script>
+</body>
+</html> 

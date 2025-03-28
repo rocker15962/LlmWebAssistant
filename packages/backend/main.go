@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
-	"llm-web-assistant/backend/config"
-	"llm-web-assistant/backend/handlers"
+	"github.com/rocker15962/llm-web-assistant/packages/backend/config"
+	"github.com/rocker15962/llm-web-assistant/packages/backend/handlers"
 )
 
 func main() {
