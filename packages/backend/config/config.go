@@ -33,8 +33,8 @@ func LoadConfig() Config {
 		GinMode:        getEnvOrDefault(EnvGinMode, "debug"),
 		Port:           port,
 		LLMApiKey:      os.Getenv(EnvLLMApiKey),
-		LLMApiEndpoint: getEnvOrDefault(EnvLLMApiEndpoint),
-		LLMModel:       getEnvOrDefault(EnvLLMModel),
+		LLMApiEndpoint: getEnvOrDefault(EnvLLMApiEndpoint, "https://api.openai.com/v1/responses"),
+		LLMModel:       getEnvOrDefault(EnvLLMModel, "gpt-4o-mini"),
 		Debug:          os.Getenv(EnvDebug) == "true",
 	}
 }
