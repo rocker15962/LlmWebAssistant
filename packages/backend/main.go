@@ -1,63 +1,50 @@
 package main
 
 import (
-	"log"
-	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
-	"github.com/rocker15962/llm-web-assistant/packages/backend/config"
 	"github.com/rocker15962/llm-web-assistant/packages/backend/handlers"
+	"github.com/rocker15962/llm-web-assistant/packages/backend/utils"
 )
 
 func main() {
 	// 載入環境變數
 	if err := godotenv.Load(); err != nil {
-		log.Println("警告: 無法載入 .env 文件")
+		utils.LogWarning("未找到 .env 檔案，使用環境變數")
 	}
 
 	// 設置 Gin 模式
 	ginMode := os.Getenv("GIN_MODE")
 	if ginMode != "" {
 		gin.SetMode(ginMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// 創建 Gin 路由器
-	r := gin.Default()
+	// 創建 Gin 引擎
+	r := gin.New()
 
-	// 添加錯誤恢復中間件，確保記錄所有錯誤
+	// 使用自定義中間件
 	r.Use(gin.Recovery())
-
-	// 添加自定義錯誤處理中間件
-	r.Use(func(c *gin.Context) {
-		c.Next()
-
-		// 檢查是否有錯誤
-		if len(c.Errors) > 0 {
-			for _, e := range c.Errors {
-				log.Printf("錯誤: %v", e.Err)
-			}
-		}
-	})
+	r.Use(utils.LoggerMiddleware())
 
 	// 配置 CORS
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
 
-	// 設置 API 路由
-	api := r.Group("/api")
-	{
-		api.GET("/health", handlers.HandleHealth)
-		api.POST("/ask", handlers.HandleAsk)
-	}
+	// 設置路由
+	r.GET("/api/health", handlers.HandleHealth)
+	r.POST("/api/ask", handlers.HandleAsk)
 
 	// 獲取端口
 	port := os.Getenv("PORT")
@@ -65,45 +52,28 @@ func main() {
 		port = "8080" // 默認端口
 	}
 
-	// 啟動服務器
-	log.Printf("服務器啟動在 http://localhost:%s", port)
-	if err := r.Run(":" + port); err != nil {
-		log.Fatalf("無法啟動服務器: %v", err)
-	}
-}
-
-// 載入環境變數
-func loadEnv() {
-	// 嘗試從 .env 文件載入環境變數
-	envFile := ".env"
-	if _, err := os.Stat(envFile); err == nil {
-		if err := godotenv.Load(envFile); err != nil {
-			log.Printf("警告: 無法載入 .env 文件: %v", err)
+	// 獲取調試模式
+	debugMode := false
+	debugStr := os.Getenv("DEBUG")
+	if debugStr != "" {
+		var err error
+		debugMode, err = strconv.ParseBool(debugStr)
+		if err != nil {
+			utils.LogWarning("無法解析 DEBUG 環境變數，使用默認值 false")
 		}
 	}
 
-	// 確保必要的環境變數存在
-	if os.Getenv("LLM_API_KEY") == "" {
-		log.Println("警告: LLM_API_KEY 環境變數未設置")
-	}
-}
-
-// 設置 API 路由
-func setupRoutes(router *gin.Engine) {
-	// 健康檢查
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
-
-	// API 路由組
-	api := router.Group("/api")
-	{
-		// LLM 問答端點
-		api.POST("/ask", handlers.HandleAsk)
+	// 設置日誌級別
+	if debugMode {
+		utils.SetLogLevel(utils.LogLevelDebug)
+		utils.LogDebug("調試模式已啟用")
+	} else {
+		utils.SetLogLevel(utils.LogLevelInfo)
 	}
 
-	// 靜態文件服務（用於開發和測試）
-	if !config.IsProduction() {
-		router.Static("/static", "./static")
+	// 啟動服務器
+	utils.LogInfo("啟動服務器，監聽端口 %s", port)
+	if err := r.Run(":" + port); err != nil {
+		utils.LogFatal("啟動服務器失敗: %v", err)
 	}
 }

@@ -4,15 +4,17 @@ const path = require('path');
 // 要複製的檔案和目錄
 const filesToCopy = [
   { src: 'manifest.json', dest: 'dist/manifest.json' },
-  { src: 'popup/popup.html', dest: 'dist/popup/popup.html' },
-  { src: 'popup/popup.css', dest: 'dist/popup/popup.css' },
+  { src: 'background.js', dest: 'dist/background.js' },
   { src: 'sidebar/sidebar.html', dest: 'dist/sidebar/sidebar.html' },
-  { src: 'content/sidebar.css', dest: 'dist/content/sidebar.css' }
+  { src: 'sidebar/sidebar.css', dest: 'dist/sidebar/sidebar.css' },
+  { src: 'content/sidebar.css', dest: 'dist/content/sidebar.css' },
+  { src: 'content/contentScript.js', dest: 'dist/content/contentScript.js' }
 ];
 
 // 要複製的目錄
 const dirsToCopy = [
-  { src: 'assets', dest: 'dist/assets' }
+  { src: 'assets', dest: 'dist/assets' },
+  { src: 'utils', dest: 'dist/utils' }
 ];
 
 // 確保目標目錄存在

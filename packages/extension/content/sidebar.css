@@ -1,77 +1,33 @@
-/* 側邊欄容器 */
+/* 引用主要樣式文件 */
+@import url('../sidebar/sidebar.css');
+
+/* 側邊欄容器樣式 */
 #llm-sidebar-container {
   position: fixed;
   top: 0;
-  right: -400px; /* 初始隱藏在右側 */
+  right: 0;
   width: 400px;
   height: 100vh;
-  background-color: #ffffff;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2); /* 增強陰影 */
   z-index: 9999;
-  transition: right 0.3s ease;
-  border-left: none; /* 移除邊界線 */
-  overflow: hidden; /* 防止內容溢出 */
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
-/* 側邊欄展開狀態 */
-#llm-sidebar-container.expanded {
-  right: 0;
+#llm-sidebar-container.open {
+  transform: translateX(0);
 }
 
-/* 側邊欄 iframe */
 #llm-sidebar-iframe {
   width: 100%;
   height: 100%;
   border: none;
-  background-color: #ffffff; /* 確保背景是白色 */
-}
-
-/* 側邊欄切換按鈕 */
-#llm-sidebar-toggle {
-  position: fixed;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 48px;
-  background-color: #4285f4;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10000;
-  border-radius: 4px 0 0 4px;
-  transition: right 0.3s ease;
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2); /* 添加陰影 */
-}
-
-#llm-sidebar-toggle.expanded {
-  right: 400px;
-}
-
-#llm-sidebar-toggle .material-icons {
-  font-size: 20px;
-  transition: transform 0.3s ease;
-}
-
-#llm-sidebar-toggle.expanded .material-icons {
-  transform: rotate(180deg);
+  background-color: white;
 }
 
 /* 深色模式 */
 @media (prefers-color-scheme: dark) {
-  #llm-sidebar-container {
-    background-color: #1e1e1e; /* 深色背景 */
-    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5); /* 深色模式下更強的陰影 */
-  }
-  
   #llm-sidebar-iframe {
-    background-color: #1e1e1e; /* 深色背景 */
-  }
-  
-  #llm-sidebar-toggle {
-    background-color: #333333; /* 深色按鈕 */
-    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.3); /* 深色模式下的按鈕陰影 */
+    background-color: #202124;
   }
 } 

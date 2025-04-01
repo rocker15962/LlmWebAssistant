@@ -1,9 +1,10 @@
 {
     "manifest_version": 3,
     "name": "LLM 網頁助手",
-    "version": "1.0",
-    "description": "在瀏覽網頁時隨時向 LLM 提問，並分享當前網頁內容和截圖",
+    "version": "1.0.0",
+    "description": "使用 LLM 分析網頁內容並回答問題",
     "action": {
+      "default_title": "LLM 網頁助手",
       "default_icon": {
         "16": "assets/icon16.png",
         "48": "assets/icon48.png",
@@ -12,16 +13,17 @@
     },
     "permissions": [
       "activeTab",
-      "tabs",
       "scripting",
-      "storage"
+      "storage",
+      "tabs"
     ],
     "host_permissions": [
       "http://localhost:8080/*",
       "<all_urls>"
     ],
     "background": {
-      "service_worker": "background/background.js"
+      "service_worker": "background.js",
+      "type": "module"
     },
     "content_scripts": [
       {
@@ -37,7 +39,7 @@
     },
     "web_accessible_resources": [
       {
-        "resources": ["utils/*.js", "popup/popup.css", "sidebar/*.html", "sidebar/*.js", "assets/*", "utils/markdown.js"],
+        "resources": ["sidebar/sidebar.html", "sidebar/sidebar.css", "utils/*", "assets/*"],
         "matches": ["<all_urls>"]
       }
     ],

@@ -12,10 +12,10 @@ type LLMRequest struct {
 
 // LLMResponse 表示發送給前端的響應
 type LLMResponse struct {
-	Answer         string `json:"answer"`
-	PromptTokens   int    `json:"promptTokens,omitempty"`
-	CompletionTokens int  `json:"completionTokens,omitempty"`
-	TotalTokens    int    `json:"totalTokens,omitempty"`
+	Answer           string `json:"answer"`
+	PromptTokens     int    `json:"promptTokens,omitempty"`
+	CompletionTokens int    `json:"completionTokens,omitempty"`
+	TotalTokens      int    `json:"totalTokens,omitempty"`
 }
 
 // OpenAIMessage 表示 OpenAI API 消息格式
@@ -26,7 +26,8 @@ type OpenAIMessage struct {
 
 // OpenAITool 表示 OpenAI API 工具格式
 type OpenAITool struct {
-	Type string `json:"type"`
+	Type     string                 `json:"type"`
+	Function map[string]interface{} `json:"function,omitempty"`
 }
 
 // OpenAIRequest 表示 OpenAI API 請求格式
@@ -79,4 +80,4 @@ type TokenUsage struct {
 type AskResponse struct {
 	Answer string     `json:"answer"`
 	Usage  TokenUsage `json:"usage"`
-} 
+}

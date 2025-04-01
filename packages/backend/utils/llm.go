@@ -4,343 +4,265 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
-	"github.com/rocker15962/llm-web-assistant/packages/backend/config"
 	"github.com/rocker15962/llm-web-assistant/packages/backend/models"
 )
 
-// AskLLMResult 包含 LLM 回答和 token 使用量
-type AskLLMResult struct {
-	Answer           string
-	PromptTokens     int
-	CompletionTokens int
-	TotalTokens      int
-}
+// GenerateResponse 生成回應
+func GenerateResponse(req models.AskRequest) (models.AskResponse, error) {
+	startTime := time.Now()
 
-// LLMRequest 定義了發送到 LLM 的請求結構
-type LLMRequest struct {
-	Question     string  `json:"question"`
-	URL          string  `json:"url"`
-	Title        string  `json:"title"`
-	Screenshot   *string `json:"screenshot,omitempty"`
-	PageContent  *string `json:"pageContent,omitempty"`
-	UseWebSearch bool    `json:"useWebSearch"`
-	IsSimple     bool    `json:"isSimple"`
-}
-
-// AskLLM 調用 OpenAI API
-func AskLLM(question, url, title, pageContent, screenshot string, useWebSearch bool, isSimple bool) (AskLLMResult, error) {
-	// 準備 OpenAI 請求
-	apiKey := config.GetLLMAPIKey()
+	// 獲取 API 密鑰
+	apiKey := os.Getenv("LLM_API_KEY")
 	if apiKey == "" {
-		return AskLLMResult{}, fmt.Errorf("未設置 LLM_API_KEY 環境變數")
+		return models.AskResponse{}, fmt.Errorf("未設置 LLM_API_KEY 環境變數")
 	}
 
-	var apiURL string
-	var requestJSON []byte
-	var err error
-
-	if useWebSearch {
-		apiURL = config.GetWebSearchAPIURL()
-
-		// 構建包含簡單回答指示的問題
-		var enhancedQuestion string
-		if isSimple {
-			enhancedQuestion = fmt.Sprintf("請用非常簡潔的語言回答以下問題，盡量使用簡短的句子和精簡的表達方式。回答應該直接切入重點，避免冗長的解釋。問題：%s", question)
-		} else {
-			enhancedQuestion = question
-		}
-
-		// 使用 responses API 格式
-		webSearchRequest := map[string]interface{}{
-			"model": "gpt-4o-mini",
-			"tools": []map[string]interface{}{
-				{
-					"type": "web_search_preview",
-				},
-			},
-			"input": enhancedQuestion,
-		}
-
-		requestJSON, err = json.Marshal(webSearchRequest)
-	} else if screenshot != "" {
-		// 使用圖像處理 API
-		apiURL = config.GetLLMAPIURL()
-
-		// 檢查截圖大小
-		if len(screenshot) > 20*1024*1024 { // 20MB
-			return AskLLMResult{}, fmt.Errorf("截圖太大，超過 20MB 限制")
-		}
-
-		// 檢查截圖格式
-		if !strings.HasPrefix(screenshot, "data:image/jpeg;base64,") &&
-			!strings.HasPrefix(screenshot, "data:image/png;base64,") &&
-			!strings.HasPrefix(screenshot, "data:image/webp;base64,") {
-			screenshot = "data:image/jpeg;base64," + strings.TrimPrefix(strings.TrimPrefix(screenshot, "data:image/"), ";base64,")
-		}
-
-		// 構建包含圖像的請求
-		imageRequest := map[string]interface{}{
-			"model": "gpt-4o-mini",
-			"messages": []map[string]interface{}{
-				{
-					"role": "system",
-					"content": `你是一個專門分析網頁截圖的助手。你的任務是：
-1. 仔細查看用戶提供的網頁截圖
-2. 識別截圖中的所有文本內容
-3. 特別注意用戶問題中提到的特定元素
-4. 提供準確、詳細的回答
-5. 如果截圖中有表格、列表或其他結構化內容，請清晰地描述它們
-6. 如果無法看清某些內容，請誠實說明`,
-				},
-				{
-					"role": "user",
-					"content": []map[string]interface{}{
-						{
-							"type": "text",
-							"text": fmt.Sprintf("問題: %s\n\n用戶正在瀏覽的網頁:\n標題: %s\nURL: %s", question, title, url),
-						},
-						{
-							"type": "image_url",
-							"image_url": map[string]interface{}{
-								"url":    screenshot,
-								"detail": "low",
-							},
-						},
-					},
-				},
-			},
-		}
-
-		requestJSON, err = json.Marshal(imageRequest)
-	} else {
-		apiURL = config.GetLLMAPIURL()
-
-		// 準備提示詞
-		req := LLMRequest{
-			Question:     question,
-			URL:          url,
-			Title:        title,
-			Screenshot:   &screenshot,
-			PageContent:  &pageContent,
-			UseWebSearch: useWebSearch,
-			IsSimple:     isSimple,
-		}
-		prompt := buildPrompt(req)
-
-		// 使用標準 chat completions API 格式
-		request := models.OpenAIRequest{
-			Model: "gpt-4o-mini",
-			Messages: []models.OpenAIMessage{
-				{
-					Role:    "system",
-					Content: "你是一個網頁助手，可以回答用戶關於他們正在瀏覽的網頁的問題。請簡潔明了地回答。",
-				},
-				{
-					Role:    "user",
-					Content: prompt,
-				},
-			},
-			Temperature: 0.7,
-		}
-
-		requestJSON, err = json.Marshal(request)
+	// 獲取 API 端點
+	apiEndpoint := os.Getenv("LLM_API_ENDPOINT")
+	if apiEndpoint == "" {
+		apiEndpoint = "https://api.openai.com/v1/responses" // 默認使用 OpenAI responses API
 	}
 
-	if err != nil {
-		return AskLLMResult{}, fmt.Errorf("無法序列化請求: %v", err)
+	// 獲取模型名稱
+	modelName := os.Getenv("LLM_MODEL")
+	if modelName == "" {
+		modelName = "gpt-4o-mini" // 默認使用 GPT-4o-mini
 	}
 
-	// 使用 HTTP 客戶端發送請求
-	responseBody, err := callOpenAIAPI(apiURL, apiKey, requestJSON)
-	if err != nil {
-		return AskLLMResult{}, fmt.Errorf("執行 OpenAI API 失敗: %v", err)
+	// 構建 API 請求
+	apiReq := map[string]interface{}{
+		"model": modelName,
 	}
 
-	// 根據使用的 API 解析不同的響應格式
-	if useWebSearch {
-		return parseWebSearchResponse(responseBody)
-	} else {
-		return parseChatCompletionResponse(responseBody)
-	}
-}
+	// 構建系統提示詞
+	systemPrompt := "你是一個專業的網頁分析助手。"
 
-// 構建提示詞
-func buildPrompt(req LLMRequest) string {
-	var prompt strings.Builder
-
-	// 添加簡單回答模式的指示
 	if req.IsSimple {
-		prompt.WriteString("請用非常簡潔的語言回答以下問題，盡量使用簡短的句子和精簡的表達方式。回答應該直接切入重點，避免冗長的解釋。\n\n")
+		systemPrompt += `
+你應該提供簡潔明瞭的回答，控制在 100 字以內。
+直接給出結論，不需要解釋過程。`
+	} else {
+		systemPrompt += `
+你應該提供詳細且結構化的回答。
+如果適合，可以使用列表、標題等格式來組織信息。
+解釋你的分析過程和結論。`
 	}
 
-	// 基本指示
-	prompt.WriteString("你是一個網頁助手 AI，可以回答用戶關於當前網頁的問題。")
+	systemPrompt += `
+你的任務是：
+1. 分析用戶提供的網頁內容和截圖
+2. 回答用戶的問題，基於你從網頁中獲得的信息
+3. 如果無法從提供的資料中找到答案，請誠實說明`
 
-	// 添加網頁內容（如果有）
-	if req.PageContent != nil && *req.PageContent != "" {
-		prompt.WriteString("\n\n以下是網頁的結構化內容：\n")
-		prompt.WriteString(*req.PageContent)
+	// 構建輸入消息
+	input := []map[string]interface{}{}
 
-		// 如果是簡單回答模式，添加額外指示
-		if req.IsSimple {
-			prompt.WriteString("\n\n請記住：提供簡潔的回答，只包含最重要的信息，避免不必要的細節。")
-		}
-	}
+	// 添加系統消息
+	input = append(input, map[string]interface{}{
+		"role": "system",
+		"content": []map[string]interface{}{
+			{
+				"type": "input_text",
+				"text": systemPrompt,
+			},
+		},
+	})
 
-	// 添加截圖提示（如果有）
-	if req.Screenshot != nil && *req.Screenshot != "" {
-		prompt.WriteString("\n\n我已附上當前網頁的截圖，請根據截圖內容回答問題。")
+	// 構建用戶消息
+	userContent := []map[string]interface{}{}
 
-		// 如果是簡單回答模式，添加額外指示
-		if req.IsSimple {
-			prompt.WriteString("只描述截圖中與問題直接相關的內容，不需要詳細描述整個截圖。")
-		}
-	}
+	// 添加文本內容
+	userPrompt := fmt.Sprintf("我正在瀏覽網頁：%s\n\n我的問題是：%s", req.Title, req.Question)
 
-	// 添加搜索指示（如果需要）
-	if req.UseWebSearch {
-		prompt.WriteString("\n\n請使用網絡搜索來回答這個問題，確保提供最新、最準確的信息。")
+	// 如果有頁面內容，添加到提示詞
+	if req.PageContent != "" {
+		userPrompt += "\n\n網頁內容摘要：\n"
 
-		// 如果是簡單回答模式，添加額外指示
-		if req.IsSimple {
-			prompt.WriteString("搜索後提供簡短的摘要回答，不需要列出所有搜索結果或詳細解釋。")
-		}
-	}
+		// 嘗試解析 JSON 格式的頁面內容
+		var contentObj map[string]interface{}
+		if err := json.Unmarshal([]byte(req.PageContent), &contentObj); err == nil {
+			// 成功解析 JSON
+			if headings, ok := contentObj["headings"].([]interface{}); ok && len(headings) > 0 {
+				userPrompt += "標題：\n"
+				for i, h := range headings {
+					if i < 5 { // 限制標題數量
+						userPrompt += fmt.Sprintf("- %s\n", h)
+					} else {
+						userPrompt += "...(更多標題)\n"
+						break
+					}
+				}
+				userPrompt += "\n"
+			}
 
-	// 添加用戶問題
-	prompt.WriteString("\n\n用戶問題：")
-	prompt.WriteString(req.Question)
-
-	// 最後再次強調簡潔回答（如果是簡單模式）
-	if req.IsSimple {
-		prompt.WriteString("\n\n請記住：你的回答應該簡短、直接，只包含最核心的信息。避免使用過多的修飾詞和解釋性語句。")
-	}
-
-	return prompt.String()
-}
-
-// 使用 HTTP 客戶端發送請求
-func callOpenAIAPI(apiURL, apiKey string, requestJSON []byte) ([]byte, error) {
-	// 創建請求
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
-	if err != nil {
-		return nil, fmt.Errorf("創建請求失敗: %v", err)
-	}
-
-	// 設置標頭
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-
-	// 發送請求
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("發送請求失敗: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// 讀取響應
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("讀取響應失敗: %v", err)
-	}
-
-	// 檢查狀態碼
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API 返回錯誤狀態碼: %d, 響應: %s", resp.StatusCode, string(body))
-	}
-
-	return body, nil
-}
-
-// 解析標準 chat completions 響應
-func parseChatCompletionResponse(responseBody []byte) (AskLLMResult, error) {
-	// 嘗試解析為標準響應
-	var response models.OpenAIResponse
-	if err := json.Unmarshal(responseBody, &response); err != nil {
-		// 嘗試解析為通用 JSON
-		var genericResponse map[string]interface{}
-		if jsonErr := json.Unmarshal(responseBody, &genericResponse); jsonErr != nil {
-			return AskLLMResult{}, fmt.Errorf("無法解析 API 響應: %v", err)
-		}
-
-		// 嘗試從通用 JSON 中提取答案
-		var answer string
-		var promptTokens, completionTokens, totalTokens int
-
-		// 檢查是否有 choices 字段
-		if choices, ok := genericResponse["choices"].([]interface{}); ok && len(choices) > 0 {
-			if choice, ok := choices[0].(map[string]interface{}); ok {
-				if message, ok := choice["message"].(map[string]interface{}); ok {
-					if content, ok := message["content"].(string); ok {
-						answer = content
+			if paragraphs, ok := contentObj["paragraphs"].([]interface{}); ok && len(paragraphs) > 0 {
+				userPrompt += "內容摘要：\n"
+				for i, p := range paragraphs {
+					if i < 3 { // 限制段落數量
+						userPrompt += fmt.Sprintf("%s\n\n", p)
+					} else {
+						userPrompt += "...(更多內容)\n"
+						break
 					}
 				}
 			}
-		}
-
-		// 檢查是否有 usage 字段
-		if usage, ok := genericResponse["usage"].(map[string]interface{}); ok {
-			if pt, ok := usage["prompt_tokens"].(float64); ok {
-				promptTokens = int(pt)
-			}
-			if ct, ok := usage["completion_tokens"].(float64); ok {
-				completionTokens = int(ct)
-			}
-			if tt, ok := usage["total_tokens"].(float64); ok {
-				totalTokens = int(tt)
+		} else {
+			// 無法解析 JSON，直接使用文本
+			// 限制長度以避免 token 過多
+			const maxContentLength = 2000
+			if len(req.PageContent) > maxContentLength {
+				userPrompt += req.PageContent[:maxContentLength] + "...(內容已截斷)"
+			} else {
+				userPrompt += req.PageContent
 			}
 		}
+	}
 
-		if answer != "" {
-			return AskLLMResult{
-				Answer:           answer,
-				PromptTokens:     promptTokens,
-				CompletionTokens: completionTokens,
-				TotalTokens:      totalTokens,
-			}, nil
+	// 添加文本內容到用戶輸入
+	userContent = append(userContent, map[string]interface{}{
+		"type": "input_text",
+		"text": userPrompt,
+	})
+
+	// 添加截圖（如果有）
+	if req.Screenshot != "" {
+		// 確保截圖格式正確
+		if !strings.HasPrefix(req.Screenshot, "data:image/") {
+			if strings.HasPrefix(req.Screenshot, "data:") {
+				req.Screenshot = strings.Replace(req.Screenshot, "data:", "data:image/jpeg;base64,", 1)
+			} else {
+				req.Screenshot = "data:image/jpeg;base64," + req.Screenshot
+			}
 		}
 
-		return AskLLMResult{}, fmt.Errorf("無法從響應中提取答案")
+		userContent = append(userContent, map[string]interface{}{
+			"type":      "input_image",
+			"image_url": req.Screenshot,
+		})
 	}
 
-	// 檢查是否有回答
-	if len(response.Choices) == 0 {
-		return AskLLMResult{}, fmt.Errorf("API 沒有返回任何選擇")
+	// 添加用戶消息到輸入
+	input = append(input, map[string]interface{}{
+		"role":    "user",
+		"content": userContent,
+	})
+
+	// 設置輸入
+	apiReq["input"] = input
+
+	// 設置 max_tokens 根據簡單/詳細模式
+	if req.IsSimple {
+		apiReq["max_output_tokens"] = 500
+	} else {
+		apiReq["max_output_tokens"] = 2000
 	}
 
-	// 返回 LLM 的回答和 token 使用量
-	return AskLLMResult{
-		Answer:           response.Choices[0].Message.Content,
-		PromptTokens:     response.Usage.PromptTokens,
-		CompletionTokens: response.Usage.CompletionTokens,
-		TotalTokens:      response.Usage.TotalTokens,
-	}, nil
-}
+	// 設置溫度
+	apiReq["temperature"] = 0.7
 
-// 解析 web_search 響應
-func parseWebSearchResponse(responseBody []byte) (AskLLMResult, error) {
-	var webSearchResponse map[string]interface{}
-	if err := json.Unmarshal(responseBody, &webSearchResponse); err != nil {
-		return AskLLMResult{}, fmt.Errorf("無法解析 web_search 響應: %v", err)
+	// 如果啟用了網絡搜索，添加工具
+	if req.UseWebSearch {
+		LogDebug("啟用網絡搜索功能")
+		apiReq["tools"] = []map[string]interface{}{
+			{
+				"type": "web_search_preview",
+			},
+		}
 	}
 
-	// 從 web_search 響應中提取答案
+	// 序列化請求
+	reqBody, err := json.Marshal(apiReq)
+	if err != nil {
+		LogErrorDetails(err, "序列化 LLM API 請求失敗")
+		return models.AskResponse{}, err
+	}
+
+	// 記錄完整的請求內容（用於調試）
+	LogDebug("OpenAI 請求內容: %s", string(reqBody))
+
+	// 創建 HTTP 請求
+	httpReq, err := http.NewRequest("POST", apiEndpoint, bytes.NewBuffer(reqBody))
+	if err != nil {
+		LogErrorDetails(err, "創建 HTTP 請求失敗")
+		return models.AskResponse{}, err
+	}
+
+	// 設置請求頭
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+
+	// 發送請求
+	LogDebug("發送請求到 LLM API: %s", apiEndpoint)
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		LogErrorDetails(err, "發送 LLM API 請求失敗")
+		return models.AskResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	// 讀取響應體
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		LogErrorDetails(err, "讀取 LLM API 響應失敗")
+		return models.AskResponse{}, err
+	}
+
+	// 檢查響應狀態
+	if resp.StatusCode != http.StatusOK {
+		// 嘗試解析錯誤響應
+		var errorResp struct {
+			Error struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+				Code    string `json:"code"`
+			} `json:"error"`
+		}
+
+		if err := json.Unmarshal(respBody, &errorResp); err == nil && errorResp.Error.Message != "" {
+			errorMsg := fmt.Sprintf("LLM API 錯誤: %s (類型: %s, 代碼: %s)",
+				errorResp.Error.Message, errorResp.Error.Type, errorResp.Error.Code)
+			LogError(errorMsg)
+			LogDebug("完整錯誤響應: %s", string(respBody))
+			return models.AskResponse{}, fmt.Errorf(errorMsg)
+		}
+
+		// 如果無法解析錯誤響應，則返回原始響應
+		errorMsg := fmt.Sprintf("LLM API 返回狀態碼: %d, 響應: %s", resp.StatusCode, string(respBody))
+		LogError(errorMsg)
+		return models.AskResponse{}, fmt.Errorf("LLM API 返回狀態碼: %d", resp.StatusCode)
+	}
+
+	// 記錄完整的響應內容（用於調試）
+	LogDebug("OpenAI 響應內容: %s", string(respBody))
+
+	// 解析響應
+	var responseObj map[string]interface{}
+	if err := json.Unmarshal(respBody, &responseObj); err != nil {
+		LogErrorDetails(err, "解析 LLM API 響應失敗")
+		LogDebug("無法解析的響應內容: %s", string(respBody))
+		return models.AskResponse{}, err
+	}
+
+	// 提取回答文本
 	var answer string
-	if output, ok := webSearchResponse["output"].([]interface{}); ok && len(output) > 0 {
+
+	// 從 output 數組中查找 message 類型的內容
+	if output, ok := responseObj["output"].([]interface{}); ok {
 		for _, item := range output {
-			if msg, ok := item.(map[string]interface{}); ok {
-				if msgType, ok := msg["type"].(string); ok && msgType == "message" {
-					if content, ok := msg["content"].([]interface{}); ok && len(content) > 0 {
+			if outputItem, ok := item.(map[string]interface{}); ok {
+				if outputType, ok := outputItem["type"].(string); ok && outputType == "message" {
+					if content, ok := outputItem["content"].([]interface{}); ok && len(content) > 0 {
 						for _, contentItem := range content {
-							if textObj, ok := contentItem.(map[string]interface{}); ok {
-								if textType, ok := textObj["type"].(string); ok && textType == "output_text" {
-									if text, ok := textObj["text"].(string); ok {
+							if textItem, ok := contentItem.(map[string]interface{}); ok {
+								if textType, ok := textItem["type"].(string); ok && textType == "output_text" {
+									if text, ok := textItem["text"].(string); ok {
 										answer = text
 										break
 									}
@@ -354,12 +276,14 @@ func parseWebSearchResponse(responseBody []byte) (AskLLMResult, error) {
 	}
 
 	if answer == "" {
-		return AskLLMResult{}, fmt.Errorf("無法從 web_search 響應中提取答案")
+		LogError("無法從 LLM API 響應中提取回答")
+		LogDebug("完整響應: %s", string(respBody))
+		return models.AskResponse{}, fmt.Errorf("無法從 LLM API 響應中提取回答")
 	}
 
 	// 提取 token 使用量
 	var promptTokens, completionTokens, totalTokens int
-	if usage, ok := webSearchResponse["usage"].(map[string]interface{}); ok {
+	if usage, ok := responseObj["usage"].(map[string]interface{}); ok {
 		if pt, ok := usage["input_tokens"].(float64); ok {
 			promptTokens = int(pt)
 		}
@@ -371,40 +295,17 @@ func parseWebSearchResponse(responseBody []byte) (AskLLMResult, error) {
 		}
 	}
 
-	return AskLLMResult{
-		Answer:           answer,
-		PromptTokens:     promptTokens,
-		CompletionTokens: completionTokens,
-		TotalTokens:      totalTokens,
-	}, nil
-}
+	// 記錄處理時間
+	processingTime := time.Since(startTime)
+	LogDebug("LLM 處理完成，耗時: %v", processingTime)
 
-// GenerateResponse 生成回應
-func GenerateResponse(req models.AskRequest) (models.AskResponse, error) {
-	// 調用 LLM 生成回答
-	result, err := AskLLM(
-		req.Question,
-		req.URL,
-		req.Title,
-		req.PageContent,
-		req.Screenshot,
-		req.UseWebSearch,
-		req.IsSimple,
-	)
-
-	if err != nil {
-		return models.AskResponse{}, fmt.Errorf("生成回答時出錯: %v", err)
-	}
-
-	// 構建回應，包括 token 使用量
-	resp := models.AskResponse{
-		Answer: result.Answer,
+	// 返回結果
+	return models.AskResponse{
+		Answer: answer,
 		Usage: models.TokenUsage{
-			PromptTokens:     result.PromptTokens,
-			CompletionTokens: result.CompletionTokens,
-			TotalTokens:      result.TotalTokens,
+			PromptTokens:     promptTokens,
+			CompletionTokens: completionTokens,
+			TotalTokens:      totalTokens,
 		},
-	}
-
-	return resp, nil
+	}, nil
 }

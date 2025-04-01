@@ -26,6 +26,16 @@ const ENDPOINTS = {
  */
 async function askLLM(data) {
   try {
+    console.log('準備發送 API 請求，參數:', {
+      question: data.question,
+      url: data.url,
+      title: data.title,
+      screenshot: data.screenshot ? '已提供 (長度: ' + data.screenshot.length + ')' : '未提供',
+      pageContent: data.pageContent ? '已提供 (長度: ' + data.pageContent.length + ')' : '未提供',
+      useWebSearch: data.useWebSearch,
+      isSimple: data.isSimple
+    });
+    
     // 確保截圖格式正確
     if (data.screenshot) {
       // 確保截圖有正確的 MIME 類型前綴
@@ -38,8 +48,10 @@ async function askLLM(data) {
           data.screenshot = `data:image/jpeg;base64,${data.screenshot}`;
         }
       }
+      console.log('截圖格式已檢查並修正');
     }
     
+    console.log('發送 API 請求到:', `${API_BASE_URL}${ENDPOINTS.ASK}`);
     // 發送 API 請求
     const response = await fetch(`${API_BASE_URL}${ENDPOINTS.ASK}`, {
       method: 'POST',
@@ -58,10 +70,12 @@ async function askLLM(data) {
     });
     
     if (!response.ok) {
-      throw new Error(`API 請求失敗: ${response.status}`);
+      return await handleApiError(response);
     }
     
+    console.log('收到 API 響應');
     const result = await response.json();
+    console.log('API 響應解析完成:', result);
     
     // 檢查回應格式
     if (result.error) {
@@ -192,6 +206,25 @@ function simulateResponse(data) {
   }
   
   return { answer };
+}
+
+// 處理 API 錯誤
+async function handleApiError(response) {
+  let errorMessage = `API 請求失敗: ${response.status}`;
+  
+  try {
+    const errorData = await response.json();
+    if (errorData.error) {
+      errorMessage = `API 錯誤: ${errorData.error}`;
+      if (errorData.detail) {
+        errorMessage += ` (${errorData.detail})`;
+      }
+    }
+  } catch (e) {
+    console.error('無法解析錯誤響應:', e);
+  }
+  
+  throw new Error(errorMessage);
 }
 
 // 導出 API 函數

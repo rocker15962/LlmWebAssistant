@@ -7,7 +7,7 @@
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <!-- 自定義 CSS -->
-  <link rel="stylesheet" href="../popup/popup.css">
+  <link rel="stylesheet" href="sidebar.css">
   <style>
     body {
       width: 100%;
@@ -117,119 +117,40 @@
       }
     }
     
-    /* 下拉選單樣式 */
-    .mode-selection {
-      margin: 15px 0;
-      display: flex;
-      align-items: center;
-    }
-    
-    .select-label {
-      font-size: 14px;
-      font-weight: 500;
-      margin-right: 10px;
-      color: #424242;
-    }
-    
-    .select-container {
-      position: relative;
-      flex: 1;
-    }
-    
-    .mode-select {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background-color: white;
-      font-size: 14px;
-      appearance: none;
-      -webkit-appearance: none;
-      cursor: pointer;
-    }
-    
-    .select-arrow {
+    /* 連網按鈕樣式 */
+    .web-search-button {
       position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      pointer-events: none;
-      color: #757575;
-    }
-    
-    /* 深色模式下拉選單 */
-    @media (prefers-color-scheme: dark) {
-      .select-label {
-        color: #e0e0e0;
-      }
-      
-      .mode-select {
-        background-color: #333;
-        border-color: #555;
-        color: #e0e0e0;
-      }
-      
-      .select-arrow {
-        color: #aaa;
-      }
-    }
-    
-    /* 按鈕組樣式 */
-    .button-group {
+      right: 10px;
+      top: 10px;
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
       display: flex;
-      gap: 10px;
-      margin: 15px 0;
-    }
-    
-    .submit-button {
-      flex: 1;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.3s, opacity 0.3s;
-      display: flex;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
     
-    .simple-button {
+    .web-search-button:hover {
       background-color: #e0e0e0;
-      color: #424242;
     }
     
-    .detail-button {
-      background-color: #2196f3;
+    .web-search-button.active {
+      background-color: #4285f4;
+      border-color: #4285f4;
       color: white;
     }
     
-    .submit-button:hover {
-      opacity: 0.9;
-    }
-    
-    .submit-button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    
-    /* 深色模式按鈕 */
-    @media (prefers-color-scheme: dark) {
-      .simple-button {
-        background-color: #424242;
-        color: #e0e0e0;
-      }
-      
-      .detail-button {
-        background-color: #1976d2;
-        color: white;
-      }
+    .text-field {
+      position: relative;
     }
     
     /* Token 信息樣式 */
     .token-info {
-      font-size: 12px;
+      font-size: 0.8em;
       color: #666;
       margin-top: 10px;
       padding-top: 8px;
@@ -243,6 +164,22 @@
       .token-info {
         color: #aaa;
         border-top-color: #333;
+      }
+      
+      .web-search-button {
+        background-color: #333;
+        border-color: #444;
+        color: #ddd;
+      }
+      
+      .web-search-button:hover {
+        background-color: #444;
+      }
+      
+      .web-search-button.active {
+        background-color: #4285f4;
+        border-color: #4285f4;
+        color: white;
       }
     }
   </style>
@@ -260,18 +197,9 @@
       <div class="input-container">
         <div class="text-field">
           <textarea id="question" placeholder="請輸入您的問題..." rows="3"></textarea>
-        </div>
-      </div>
-
-      <div class="mode-selection">
-        <label for="answerMode" class="select-label">回答模式：</label>
-        <div class="select-container">
-          <select id="answerMode" class="mode-select">
-            <option value="screenshot" selected>看圖回答 - 當前畫面截圖做回答</option>
-            <option value="content">資訊整理 - 搜集此網頁資訊做回答</option>
-            <option value="search">外部搜尋 - 搜尋網路資訊做回答</option>
-          </select>
-          <span class="select-arrow material-icons">arrow_drop_down</span>
+          <div id="webSearchButton" class="web-search-button" title="啟用/禁用網路搜尋">
+            <span class="material-icons">public</span>
+          </div>
         </div>
       </div>
 
@@ -293,6 +221,13 @@
         <h2 class="response-title">回答：</h2>
         <div id="responseContent" class="response-content"></div>
         <div id="tokenInfo" class="token-info" style="display:block;"></div>
+      </div>
+
+      <!-- 添加調試面板 -->
+      <div id="debugPanel" class="debug-panel" style="display: none;">
+        <h3>調試信息</h3>
+        <div id="debugContent" class="debug-content"></div>
+        <button id="toggleDebug" class="toggle-debug-button">隱藏調試信息</button>
       </div>
     </main>
   </div>
